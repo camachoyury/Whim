@@ -7,5 +7,6 @@
     <string name="image1_description">Cupcake</string>
     <string name="image2_description">Cookies</string>
     <string name="image3_description">Cake</string>
+    <string name="image4_description">Add your whim</string>
     <string name="results_placeholder">(Results will appear here)</string>
 </resources>
