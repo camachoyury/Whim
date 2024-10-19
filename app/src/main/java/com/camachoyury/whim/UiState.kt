@@ -20,6 +20,9 @@ sealed interface UiState {
    */
   data class Success(val outputText: String) : UiState
 
+
+  data class SuccessData(val recipe: Recipe) : UiState
+
   /**
    * There was an error generating text
    */

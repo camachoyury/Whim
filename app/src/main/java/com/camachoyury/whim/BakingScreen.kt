@@ -12,15 +12,19 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -40,6 +44,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -53,6 +58,12 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Objects
+
+val prompt = """
+       List a few popular cookie recipes using this JSON schema:
+       Recipe = {'recipeName': string, 'ingredients': Array<string>, 'instructions': Array<string>}
+       Return: Array<Recipe>
+""".trimIndent()
 
 val images = arrayOf(
     // Image generated using Gemini from the prompt "cupcake image"
@@ -131,9 +142,14 @@ fun BakingScreen(
                         .requiredSize(200.dp)
                         .clickable {
                             selectedImage.intValue = index
+                            bitmap.value = BitmapFactory.decodeResource(
+                                context.resources,
+                                images[selectedImage.intValue]
+                            )
                         }
 
                     if (index == selectedImage.intValue) {
+
                         imageModifier =
                             imageModifier.border(
                                 BorderStroke(
@@ -158,22 +174,23 @@ fun BakingScreen(
                             .padding(start = 8.dp, end = 8.dp)
                             .requiredSize(200.dp)
                             .clickable {
-                                    println("TODO: Add image picker")
-                                    val permissionCheckResult =
-                                        ContextCompat.checkSelfPermission(
-                                            context,
-                                            android.Manifest.permission.CAMERA
-                                        )
-                                    if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
-                                        cameraLauncher.launch(uri)
+                                println("TODO: Add image picker")
+                                val permissionCheckResult =
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        android.Manifest.permission.CAMERA
+                                    )
+                                if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
+                                    cameraLauncher.launch(uri)
 
-                                    } else {
-                                        // Request a permission
-                                        permissionLauncher.launch(android.Manifest.permission.CAMERA)
-                                    }
+                                } else {
+                                    // Request a permission
+                                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                }
                             }
                     )
                 }
+
                 if (capturedImageUri.path?.isNotEmpty() == true) {
                     val cameraImage = ImageDecoder.decodeBitmap(
                         ImageDecoder.createSource(
@@ -201,7 +218,6 @@ fun BakingScreen(
 
             Button(
                 onClick = {
-
                     bakingViewModel.sendPrompt(bitmap.value, prompt)
                 },
                 enabled = prompt.isNotEmpty(),
@@ -211,31 +227,72 @@ fun BakingScreen(
                 Text(text = stringResource(R.string.action_go))
             }
         }
+        var textColor = MaterialTheme.colorScheme.onSurface
+        when(uiState) {
 
-        if (uiState is UiState.Loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        } else {
-            var textColor = MaterialTheme.colorScheme.onSurface
-            if (uiState is UiState.Error) {
-                textColor = MaterialTheme.colorScheme.error
-                result = (uiState as UiState.Error).errorMessage
-            } else if (uiState is UiState.Success) {
+            UiState.Initial -> {
+                Text(
+                    text = "recipe",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            UiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+            is UiState.SuccessData -> {
+                RecipeDataView((uiState as UiState.SuccessData).recipe)
+            }
+            is UiState.Error -> {
+                Text(
+                    text = (uiState as UiState.Error).errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                    color = textColor
+                )
+            }
+            is UiState.Success -> {
                 textColor = MaterialTheme.colorScheme.onSurface
                 result = (uiState as UiState.Success).outputText
+                val scrollState = rememberScrollState()
+                Text(
+                    text = result,
+                    textAlign = TextAlign.Start,
+                    color = textColor,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(16.dp)
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                )
             }
-            val scrollState = rememberScrollState()
-            Text(
-                text = result,
-                textAlign = TextAlign.Start,
-                color = textColor,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(16.dp)
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-            )
+            }
         }
-    }
+
+
+//        if (uiState is UiState.Loading) {
+//            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+//        } else {
+//
+//            if (uiState is UiState.Error) {
+//                textColor = MaterialTheme.colorScheme.error
+//                result = (uiState as UiState.Error).errorMessage
+//            } else if (uiState is UiState.Success) {
+//
+//            }
+//            val scrollState = rememberScrollState()
+//            Text(
+//                text = result,
+//                textAlign = TextAlign.Start,
+//                color = textColor,
+//                modifier = Modifier
+//                    .align(Alignment.CenterHorizontally)
+//                    .padding(16.dp)
+//                    .fillMaxSize()
+//                    .verticalScroll(scrollState)
+//            )
+//        }
+
 }
 
 fun Context.createImageFile(): File {
@@ -248,4 +305,61 @@ fun Context.createImageFile(): File {
         externalCacheDir      /* directory */
     )
     return image
+}
+
+
+@Composable
+fun RecipeDataView(data: Recipe) {
+    data?.let { recipe ->
+        Column (
+            modifier = Modifier
+                .padding(top = 12.dp, bottom = 12.dp, start = 8.dp, end = 8.dp)
+                .fillMaxWidth()
+        ) {
+            Text(
+                text = recipe.recipeName.orEmpty(), modifier = Modifier
+                    .fillMaxWidth(0.85f),
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            Text(
+                text = "Ingredients",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(16.dp)
+            )
+
+            LazyColumn {
+                itemsIndexed(data.ingredients) { index, ingredient ->
+                    Text(
+                        text = ingredient,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentSize(Alignment.Center)
+                            .align(Alignment.CenterHorizontally),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+
+            Text(
+                text = "Instructions",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(16.dp)
+            )
+            LazyColumn {
+                itemsIndexed(data.instructions) { index, instruction ->
+                    Text(
+                        text = instruction,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentSize(Alignment.Center)
+                            .align(Alignment.CenterHorizontally),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+
+    }
+    }
+
 }
