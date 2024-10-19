@@ -182,6 +182,7 @@ fun BakingScreen(
                         )
                     )
                     bitmap.value = cameraImage
+
                 }
             }
 
@@ -200,13 +201,6 @@ fun BakingScreen(
 
             Button(
                 onClick = {
-                    if (selectedImage.intValue != images.lastIndex) {
-
-                        bitmap.value = BitmapFactory.decodeResource(
-                            context.resources,
-                            images[selectedImage.intValue]
-                        )
-                    }
 
                     bakingViewModel.sendPrompt(bitmap.value, prompt)
                 },
